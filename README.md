@@ -12,111 +12,102 @@ El controlador tiene tres componentes:
 - **I (Integral):** acumula los errores para corregir desviaciones mantenidas.
 - **D (Derivativa):** tiene en cuenta cómo cambia el error para mejorar la estabilidad.
 
-Los parámetros utilizados en la versión actual son:
+Los parámetros utilizados son:
 
 - Kp = 0.012
 - Ki = 0.00005
 - Kd = 0.001
 
-Además, se ha añadido un filtro a la componente derivativa para suavizar las correcciones y reducir las oscilaciones del coche.
+Además, se utiliza un filtro para suavizar la componente derivativa y reducir las oscilaciones.
 
-La velocidad también se adapta al error: cuanto más se aleja la línea del centro de la imagen, más se reduce la velocidad. Actualmente se utiliza una velocidad máxima de 10 y una mínima de 3.
+La velocidad del coche también se adapta al error. Actualmente se utiliza una velocidad máxima de 12, una mínima de 3 y un factor de reducción de 0.04. Cuando aumenta la desviación respecto a la línea, el coche reduce su velocidad para intentar afrontar mejor las curvas.
 
 ## Evolución del código
 
-Durante el desarrollo se han realizado varias modificaciones para mejorar el seguimiento de la línea y reducir el tiempo necesario para completar una vuelta.
+Durante el desarrollo se han realizado varias modificaciones para mejorar el seguimiento de la línea y reducir el tiempo de vuelta.
 
 ### 1. Primer controlador proporcional
 
-Inicialmente, el programa detectaba la línea roja mediante una máscara HSV y calculaba su centro utilizando `cv2.moments()`.
+Inicialmente se detectaba la línea roja mediante una máscara HSV y se calculaba su centro utilizando `cv2.moments()`.
 
-La dirección se corregía con un controlador proporcional sencillo, multiplicando el error por una constante.
-
-El principal problema era que el coche circulaba demasiado rápido y no conseguía seguir correctamente las curvas, por lo que terminaba saliéndose de la pista.
+La dirección se corregía multiplicando el error por una constante. El problema era que el coche circulaba demasiado rápido y se salía en las curvas.
 
 ### 2. Mejora de la detección del rojo
 
-Se sustituyó la máscara inicial por dos máscaras HSV para detectar mejor los diferentes tonos de rojo.
-
-También se modificó el cálculo del centro de la imagen, que inicialmente tenía un valor fijo de 320 píxeles, para obtenerlo directamente a partir de sus dimensiones.
+Se probaron dos máscaras HSV para detectar diferentes tonos de rojo. También se modificó el cálculo del centro de la imagen, sustituyendo el valor fijo de 320 píxeles por uno calculado a partir de sus dimensiones.
 
 ### 3. Implementación del controlador PID
 
-Se sustituyó el controlador proporcional por un PID completo, incorporando las componentes integral y derivativa.
+Se incorporaron las componentes integral y derivativa al controlador proporcional.
 
-También se empezó a calcular el tiempo transcurrido entre iteraciones y se limitó la velocidad angular para evitar correcciones excesivas.
-
-Aunque el control de dirección mejoró, todavía era necesario ajustar la velocidad para afrontar las curvas.
+También se comenzó a calcular el tiempo entre iteraciones y a limitar la velocidad angular para evitar correcciones excesivas.
 
 ### 4. Velocidad adaptativa
 
-Se introdujo una velocidad variable dependiendo del error respecto al centro de la línea.
+Se introdujo una velocidad variable según el error horizontal.
 
-De esta manera, cuando el coche se encuentra centrado puede circular más rápido, mientras que cuando aumenta la desviación reduce su velocidad para intentar corregir la trayectoria sin salirse.
+De esta forma, el coche reduce la velocidad cuando se aleja del centro de la línea y puede circular más rápido cuando está mejor alineado.
 
 ### 5. Regiones de interés y detección de rectas
 
-Se dividió la imagen en dos zonas:
+Se dividió la imagen en dos zonas: una cercana para calcular el error y otra lejana para detectar posibles rectas.
 
-- **Zona cercana:** se utilizaba para detectar la posición de la línea y calcular el error del PID.
-- **Zona lejana:** permitía comprobar si la línea continuaba aproximadamente recta y decidir cuándo aumentar la velocidad.
-
-Con esta modificación se intentó aprovechar mejor los tramos rectos del circuito.
+Esto permitía aumentar la velocidad en determinados tramos del circuito.
 
 ### 6. Aceleración progresiva
 
-Se modificó el control de velocidad para evitar aceleraciones bruscas.
-
-Cuando el coche podía aumentar su velocidad, lo hacía progresivamente. En cambio, cuando necesitaba reducirla para afrontar una curva, la reducción se aplicaba inmediatamente.
-
-También se fueron ajustando los parámetros de velocidad mediante diferentes pruebas en el simulador.
+Se añadió una aceleración gradual para evitar aumentos bruscos de velocidad, manteniendo una reducción inmediata cuando el coche necesitaba afrontar una curva.
 
 ### 7. Estadísticas de rendimiento
 
-Se añadieron estadísticas que muestran en la consola la velocidad media ordenada y el porcentaje de iteraciones en las que el coche circula a una velocidad inferior a 8.
+Se incorporaron estadísticas que muestran en la consola la velocidad media ordenada y el porcentaje de iteraciones con velocidad inferior a 8.
 
-Esto permite analizar el comportamiento del controlador y comprobar si el coche está aprovechando realmente las velocidades configuradas.
+Estos datos ayudan a comprobar cuánto se aprovechan las velocidades configuradas.
 
-### 8. Simplificación y mejora del controlador PID
+### 8. Simplificación del controlador PID
 
-Después de realizar varias pruebas, se observó que el coche seguía teniendo oscilaciones y que añadir más funcionalidades no siempre mejoraba los tiempos.
+Tras varias pruebas, se comprobó que el coche seguía presentando oscilaciones y que añadir más funcionalidades no siempre mejoraba los resultados.
 
-Por ello, se decidió volver a una versión más sencilla y realizar los siguientes cambios:
+Por ello, se realizaron los siguientes cambios:
 
-- Se redujo **Kd de 0.008 a 0.001** para disminuir la influencia de la componente derivativa.
-- Se añadió un filtro a la derivada para suavizar los cambios de dirección.
-- Se volvió a calcular el centroide utilizando toda la imagen, eliminando las regiones de interés.
+- Se redujo Kd de 0.008 a 0.001.
+- Se añadió un filtro a la componente derivativa.
+- Se volvió a utilizar el centroide de toda la imagen.
 - Se eliminaron la detección de rectas y la aceleración progresiva.
-- Se ajustaron las velocidades a un máximo de 10 y un mínimo de 3.
-- Se incorporó `Frequency.tick()` para regular la frecuencia del bucle.
+- Se ajustaron las velocidades y se incorporó `Frequency.tick()`.
 
-Con estos cambios se consiguió un comportamiento más estable y se redujo el tiempo de vuelta hasta aproximadamente **115 segundos**.
+Con esta versión se consiguió completar una vuelta en aproximadamente **115 segundos**.
 
-Esta es la versión que se utiliza actualmente, manteniendo también las estadísticas de rendimiento.
+### 9. Optimización de la velocidad
+
+Finalmente, se realizaron nuevas pruebas modificando únicamente los parámetros de velocidad, manteniendo el PID anterior.
+
+Se aumentó la velocidad máxima hasta 12 y se redujo el factor `SPEED_REDUCTION` de 0.05 a 0.04.
+
+Con ello, el coche reduce menos la velocidad cuando detecta pequeñas desviaciones de la línea, lo que permite mantener una velocidad mayor durante parte del recorrido.
+
+Esta configuración ha permitido mejorar el tiempo hasta aproximadamente **104 segundos**, siendo el mejor resultado registrado hasta el momento.
 
 ## Resultados
-
-Durante el desarrollo se han probado distintas configuraciones para mejorar el tiempo de vuelta.
 
 | Prueba | Tiempo |
 |---|---|
 | Primera vuelta completada | 260 s |
 | Primera mejora | 204 s |
 | Segunda mejora | 198,42 s |
-| Versión anterior | 167,81 s |
-| Versión actual | **115 s** |
+| Versión con detección de rectas | 167,81 s |
+| PID simplificado | 115 s |
+| Optimización de velocidad | **104 s** |
 
-Se ha conseguido reducir el tiempo de vuelta aproximadamente un **56 %** respecto a la primera vuelta completada.
+Respecto a la primera vuelta completada, se ha reducido el tiempo aproximadamente un **60 %**.
 
-Las pruebas también han demostrado que aumentar la velocidad o añadir más funcionalidades no siempre mejora el resultado. En este caso, simplificar el controlador y reducir las oscilaciones ha permitido obtener un tiempo considerablemente mejor.
-
-En el repositorio se incluyen capturas de pantalla de las ejecuciones.
+En el repositorio también se incluyen capturas de pantalla de las ejecuciones.
 
 ## Ejecución
 
 Para ejecutar el proyecto se necesita Robotics Academy (Unibotics) y el backend de robótica.
 
-El backend se inicia con Docker:
+El backend se inicia mediante Docker:
 
 ```bash
 docker run --rm -it -p 6080-6090:6080-6090 -p 7163:7163 jderobot/robotics-backend:latest
@@ -126,10 +117,10 @@ Después se abre el ejercicio **Follow Line**, se selecciona la conexión `Local
 
 ## Conclusión
 
-La principal dificultad de la práctica ha sido encontrar un equilibrio entre la velocidad y la precisión en las curvas.
+La principal dificultad ha sido encontrar un equilibrio entre la velocidad y la estabilidad del coche.
 
-A lo largo del desarrollo se ha pasado de un controlador proporcional sencillo, que no conseguía completar el circuito, a un controlador PID con velocidad adaptativa.
+Durante el desarrollo se han probado diferentes soluciones, desde un controlador proporcional sencillo hasta un PID con detección de rectas y aceleración progresiva.
 
-Se han probado diferentes mejoras, como la detección de rectas y la aceleración progresiva, pero finalmente se ha comprobado que una solución más sencilla, con la componente derivativa suavizada y unas velocidades adecuadas, ofrece mejores resultados en nuestras pruebas.
+Finalmente, se ha conseguido un mejor resultado simplificando el controlador, suavizando la componente derivativa y ajustando la velocidad en función del error.
 
-Con la última versión se ha conseguido completar una vuelta en aproximadamente **115 segundos**, mejorando considerablemente los resultados iniciales.
+Con la última configuración se ha logrado completar una vuelta en aproximadamente **104 segundos**, mejorando considerablemente los resultados iniciales.

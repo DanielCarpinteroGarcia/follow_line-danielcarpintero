@@ -12,9 +12,9 @@ Kd = 0.001
 
 #Parametros para reducir la velocidad cuando el coche se aleja del centro de la linea
 #para evitar que se salga en las curvas
-MAX_SPEED = 10
+MAX_SPEED = 12
 MIN_SPEED = 3
-SPEED_REDUCTION = 0.05
+SPEED_REDUCTION = 0.04
 
 #Variables del controlador, necesitamos almacenar informacion entre iteraciones para calcular
 #las componentes integral y derivativa
