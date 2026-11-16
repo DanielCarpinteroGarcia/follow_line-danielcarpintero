@@ -27,6 +27,12 @@ previous_error = 0.0
 integral = 0.0
 previous_time = time.monotonic()
 
+#Variables para registrar las estadisticas de velocidad
+last_report = time.monotonic()
+speed_sum = 0.0
+speed_samples = 0
+slow_samples = 0
+
 while True:
 
     #Capturar la imagen de la camara el coche mediante getImage()
@@ -87,7 +93,7 @@ while True:
         #Salida del controlador PID
         angular_velocity = P + I + D
 
-        #Limitar la velocidad angular, evitamos velocidades angulares superiores a 3 o inferiores
+        #Limito la velocidad angular, evitamos velocidades angulares superiores a 3 o inferiores
         #a -3
         angular_velocity = max(-3, min(3, angular_velocity))
 
@@ -127,5 +133,25 @@ while True:
         current_speed = 0
         integral = 0
         previous_error = 0
+
+    #Guardar los valores para calcular la velocidad media
+    speed_sum += current_speed
+    speed_samples += 1
+
+    #Contar las iteraciones con velocidad inferior a 8
+    if current_speed < 8:
+        slow_samples += 1
+
+    #Mostrar las estadisticas cada 15 segundos
+    if current_time - last_report >= 15:
+        avg_speed = speed_sum / max(speed_samples, 1)
+        slow_pct = 100 * slow_samples / max(speed_samples, 1)
+
+        print(
+            f"Velocidad media ordenada: {avg_speed:.2f}"
+            f" | Iteraciones lentas: {slow_pct:.1f}%"
+        )
+
+        last_report = current_time
 
     WebGUI.showImage(red_mask)
