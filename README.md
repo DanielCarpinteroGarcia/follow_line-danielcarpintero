@@ -20,6 +20,9 @@ También se han añadido algunas mejoras:
 - **Detección de rectas:** se utilizan dos zonas de la imagen para identificar cuándo puede acelerar.
 - **Aceleración progresiva:** se evitan cambios bruscos de velocidad.
 - **Estadísticas:** se muestra la velocidad media ordenada y el porcentaje de iteraciones a baja velocidad.
+- **P (Proporcional):** corrige la dirección según la distancia entre la línea y el centro de la imagen.
+- **I (Integral):** acumula el error para corregir desviaciones mantenidas.
+- **D (Derivativa):** tiene en cuenta cómo cambia el error para mejorar la estabilidad.
 
 ## Resultados
 
