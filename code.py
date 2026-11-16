@@ -16,20 +16,20 @@ MAX_SPEED = 12
 MIN_SPEED = 4
 SPEED_REDUCTION = 0.04
 
+#Velocidad que puede alcanzar el coche cuando detecta una recta
+STRAIGHT_SPEED = 16
+
 #Variables del controlador, necesitamos almacenar informacion entre iteraciones para calcular
 #las componentes integral y derivativa
 previous_error = 0.0
 integral = 0.0
 previous_time = time.monotonic()
 
-linearVelocity = 12
-
 while True:
-    HAL.setV(linearVelocity)
 
     #Capturar la imagen de la camara el coche mediante getImage()
     img = HAL.getImage()
-    
+
     if img is None:
         HAL.setV(0)
         HAL.setW(0)
@@ -44,13 +44,19 @@ while True:
 
     #Generar una mascara donde los pixeles que cumplen el rango de color aparecen en blanco
     red_mask = cv2.bitwise_or(mask1, mask2)
-    
-    #Calcular el centroide de la máscara
-    M = cv2.moments(red_mask)
 
     #Calcular centro horizontal de la imagen
     height, width = red_mask.shape
     center = width / 2
+
+    #Dividir la imagen en dos regiones para analizar la linea roja
+    #La zona cercana se utiliza para controlar la direccion del coche
+    near_roi = red_mask[int(height * 0.65):, :]
+    M = cv2.moments(near_roi)
+
+    #La zona lejana se utiliza para detectar si el coche se encuentra en una recta
+    far_roi = red_mask[int(height * 0.40):int(height * 0.60), :]
+    Mf = cv2.moments(far_roi)
 
     #Calcular el tiempo entre iteraciones. El PID debe tener en cuenta el tiempo transcurrido
     #entre actualizacion, porque la frecuencia de ejecucion puede variar
@@ -59,7 +65,7 @@ while True:
     previous_time = current_time
 
     if M["m00"] > 0:
-        cX = M["m10"] / M["m00"]    
+        cX = M["m10"] / M["m00"]
 
         #Calcular el error respecto al centro
         error = center - cX
@@ -79,7 +85,7 @@ while True:
         #Salida del controlador PID
         angular_velocity = P + I + D
 
-        #Limito la velocidad angular, evitamos velocidades angulares superiores a 3 o inferiores
+        #Limitar la velocidad angular, evitamos velocidades angulares superiores a 3 o inferiores
         #a -3
         angular_velocity = max(-3, min(3, angular_velocity))
 
@@ -87,14 +93,22 @@ while True:
         speed = MAX_SPEED - abs(error) * SPEED_REDUCTION
         speed = max(MIN_SPEED, speed)
 
-        HAL.setV(speed)
+        #Comprobar si la linea roja tambien aparece en la zona lejana
+        if Mf["m00"] > 0:
+            far_x = Mf["m10"] / Mf["m00"]
 
+            #Si la linea esta centrada en ambas regiones, consideramos que es una recta
+            if abs(error) < 20 and abs(far_x - cX) < 20:
+                speed = STRAIGHT_SPEED
+
+        HAL.setV(speed)
         HAL.setW(angular_velocity)
 
         #Guardar el error para la siguiente iteracion
         previous_error = error
+
     else:
-         #Si no detecta la linea, se detiene el coche
+        #Si no detecta la linea, se detiene el coche
         HAL.setV(0)
         HAL.setW(0)
 
