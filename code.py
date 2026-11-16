@@ -12,12 +12,14 @@ Kd = 0.008
 
 #Parametros para reducir la velocidad cuando el coche se aleja del centro de la linea
 #para evitar que se salga en las curvas
-MAX_SPEED = 12
+MAX_SPEED = 15
 MIN_SPEED = 4
-SPEED_REDUCTION = 0.04
+STRAIGHT_SPEED = 18
+SPEED_REDUCTION = 0.05
 
-#Velocidad que puede alcanzar el coche cuando detecta una recta
-STRAIGHT_SPEED = 16
+#Aceleracion maxima para evitar cambios bruscos de velocidad
+MAX_ACCELERATION = 3.0
+current_speed = MIN_SPEED
 
 #Variables del controlador, necesitamos almacenar informacion entre iteraciones para calcular
 #las componentes integral y derivativa
@@ -101,7 +103,17 @@ while True:
             if abs(error) < 20 and abs(far_x - cX) < 20:
                 speed = STRAIGHT_SPEED
 
-        HAL.setV(speed)
+        #Acelerar progresivamente para evitar cambios bruscos
+        #Si hay una curva, reduzco la velocidad inmediatamente
+        if speed > current_speed:
+            current_speed = min(
+                speed,
+                current_speed + MAX_ACCELERATION * dt
+            )
+        else:
+            current_speed = speed
+
+        HAL.setV(current_speed)
         HAL.setW(angular_velocity)
 
         #Guardar el error para la siguiente iteracion
@@ -112,6 +124,7 @@ while True:
         HAL.setV(0)
         HAL.setW(0)
 
+        current_speed = 0
         integral = 0
         previous_error = 0
 
