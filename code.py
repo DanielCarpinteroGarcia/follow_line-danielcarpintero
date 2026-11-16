@@ -10,6 +10,12 @@ Kp = 0.012
 Ki = 0.00005
 Kd = 0.008
 
+#Parametros para reducir la velocidad cuando el coche se aleja del centro de la linea
+#para evitar que se salga en las curvas
+MAX_SPEED = 12
+MIN_SPEED = 4
+SPEED_REDUCTION = 0.04
+
 #Variables del controlador, necesitamos almacenar informacion entre iteraciones para calcular
 #las componentes integral y derivativa
 previous_error = 0.0
@@ -77,7 +83,12 @@ while True:
         #a -3
         angular_velocity = max(-3, min(3, angular_velocity))
 
-        HAL.setV(20)
+        #Reducir la velocidad cuando aumenta el error
+        speed = MAX_SPEED - abs(error) * SPEED_REDUCTION
+        speed = max(MIN_SPEED, speed)
+
+        HAL.setV(speed)
+
         HAL.setW(angular_velocity)
 
         #Guardar el error para la siguiente iteracion
