@@ -19,8 +19,12 @@ while True:
     #Convertir la imagen a HSV, para facilitar la deteccion del color rojo
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
+    #Creamos dos mascaras para combinarlas y detectar mejor la linea roja
+    mask1 = cv2.inRange(hsv, (0, 125, 125), (10, 255, 255))
+    mask2 = cv2.inRange(hsv, (170, 125, 125), (179, 255, 255))
+
     #Generar una mascara donde los pixeles que cumplen el rango de color aparecen en blanco
-    red_mask = cv2.inRange(hsv, (0,125,125),(30,255,255))
+    red_mask = cv2.bitwise_or(mask1, mask2)
     
     #Calcular el centroide de la máscara
     M = cv2.moments(red_mask)
@@ -30,9 +34,13 @@ while True:
     else:
         cX, cY = 0, 0
 
+    #Calcular centro horizontal de la imagen
+    height, width = red_mask.shape
+    center = width / 2
+
     if cX > 0:
         #Calcular el error horizontal entre el centro de la camara y la linea detectada
-        err = 320 - cX
+        err = center - cX
 
         #Controlar la direccion aplicando una correcion proporcional al error
         HAL.setV(20)
